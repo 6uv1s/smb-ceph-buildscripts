@@ -1,0 +1,33 @@
+#!/bin/sh
+
+d=$(dirname $0)
+a=$(readlink -f ${d})
+
+if test ! -d samba; then
+  git clone git://git.samba.org/samba.git
+  cd samba
+else
+  cd samba
+  git reset --hard
+  git status -s | sed -e "s|^?? ||" | xargs rm
+fi
+
+# v3-6-test is the 3.6.x development branch
+branch=v3-6-test
+if test -n "$1"; then
+  branch=$1
+fi
+git checkout ${branch}
+
+patch -p 1 < ${a}/0001-${branch}-s3-modules-New-vfs-module-cephfs.patch
+
+cd source3
+./autogen-waf.sh
+
+# requires libldap
+# apt-get install libldap-2.4-2 libldap2-dev
+# requires libkrb5
+# apt-get install libkrb5-dev
+./configure --with-ads --with-krb5 --with-ldap
+make -j 12
+sudo make install
